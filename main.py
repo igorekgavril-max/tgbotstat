@@ -117,4 +117,4 @@ with ui.column().classes('w-full items-center gap-6').style('padding: 40px 20px;
 # Запуск приложения
 # Примечание: index.html обслуживается веб-сервером (Nginx/Apache)
 # который проксирует запросы к NiceGUI на этом порту
-ui.run(title='Аналитика Телеграм-канала', host='0.0.0.0', host_port=80, reload=False)
+ui.run(title='Аналитика Телеграм-канала', host='0.0.0.0', port=80, reload=False)
