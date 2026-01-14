@@ -161,9 +161,10 @@ def update_top_posts(mode: str):
             _top_posts_container.content = "<div style='color:#6b7280; padding: 20px; text-align: center;'>Нет данных для отображения</div>"
         return
     
-    # Проверяем наличие контейнера
+    # Проверяем наличие контейнера - если его нет, пытаемся найти в DOM
     if not _top_posts_container:
         # Контейнер еще не инициализирован, пропускаем обновление
+        print("Warning: Top posts container not initialized yet")
         return
     
     start_date = STATE.last_fetch_params.get("start_date", "")
@@ -196,22 +197,37 @@ def update_top_posts(mode: str):
         # Обновляем HTML с топ-постами
         html = format_top_posts(selected_posts, STATE.last_channel, mode)
         if _top_posts_container:
-            _top_posts_container.content = html
+            try:
+                _top_posts_container.content = html
+            except Exception as e:
+                print(f"Error updating top posts container: {e}")
+        else:
+            print("Warning: _top_posts_container is None")
         
         # Обновляем стили кнопок по аналогии с блоком "Саммари за период"
         # Активная кнопка - зеленый градиент (как карточка "Средний ER")
         # Неактивные кнопки - белый фон с серой обводкой (как остальные карточки)
-        for m, btn in _metric_buttons.items():
-            if m == mode:
-                # Активная кнопка: зеленый градиент, белый текст
-                btn.style('border: 1px solid #059669 !important; border-radius: 8px !important; background: linear-gradient(135deg, #059669 25%, #047857 100%) !important; color: #fff !important; font-size: 14px !important; font-weight: 500 !important; transition: all 0.2s !important; text-transform: none !important; box-shadow: none !important; padding: 8px 16px !important; min-width: fit-content !important;')
-            else:
-                # Неактивная кнопка: белый фон, серая обводка, темный текст
-                btn.style('border: 1px solid #e5e7eb !important; border-radius: 8px !important; background: #fff !important; color: #111827 !important; font-size: 14px !important; font-weight: 500 !important; transition: all 0.2s !important; text-transform: none !important; box-shadow: none !important; padding: 8px 16px !important; min-width: fit-content !important;')
+        if _metric_buttons:
+            for m, btn in _metric_buttons.items():
+                try:
+                    if m == mode:
+                        # Активная кнопка: зеленый градиент, белый текст
+                        btn.style('border: 1px solid #059669 !important; border-radius: 8px !important; background: linear-gradient(135deg, #059669 25%, #047857 100%) !important; color: #fff !important; font-size: 14px !important; font-weight: 500 !important; transition: all 0.2s !important; text-transform: none !important; box-shadow: none !important; padding: 8px 16px !important; min-width: fit-content !important;')
+                    else:
+                        # Неактивная кнопка: белый фон, серая обводка, темный текст
+                        btn.style('border: 1px solid #e5e7eb !important; border-radius: 8px !important; background: #fff !important; color: #111827 !important; font-size: 14px !important; font-weight: 500 !important; transition: all 0.2s !important; text-transform: none !important; box-shadow: none !important; padding: 8px 16px !important; min-width: fit-content !important;')
+                except Exception as e:
+                    print(f"Error updating button style for {m}: {e}")
     except Exception as e:
         # В случае ошибки показываем сообщение
+        print(f"Error in update_top_posts: {e}")
+        import traceback
+        traceback.print_exc()
         if _top_posts_container:
-            _top_posts_container.content = f"<div style='color:#dc2626; padding: 20px; text-align: center;'>Ошибка при обновлении: {str(e)}</div>"
+            try:
+                _top_posts_container.content = f"<div style='color:#dc2626; padding: 20px; text-align: center;'>Ошибка при обновлении: {str(e)}</div>"
+            except:
+                pass
 
 
 def render_top_posts():
@@ -295,11 +311,21 @@ def render_top_posts():
         _top_posts_container = ui.html('', sanitize=False).classes('w-full')
         
         # Привязываем обработчики кликов к кнопкам ВНУТРИ контекста карточки
-        # Используем lambda с дефолтным аргументом для правильного захвата значения
+        # Используем замыкание для правильного захвата значения
         for mode_key, btn in list(_metric_buttons.items()):
-            # Используем lambda с дефолтным аргументом mode=mode_key для правильного захвата
-            # Это гарантирует, что каждая lambda функция захватывает правильное значение
-            btn.on('click', lambda mode=mode_key: update_top_posts(mode))
+            # Создаем функцию-обертку для правильного захвата значения mode_key
+            def make_handler(mode):
+                def handler():
+                    update_top_posts(mode)
+                return handler
+            btn.on('click', make_handler(mode_key))
+        
+        # Инициализируем отображение с метрикой по умолчанию (ER), если данные уже есть
+        if STATE.posts and STATE.last_fetch_params:
+            # Используем небольшую задержку, чтобы убедиться, что DOM готов
+            def init_display():
+                update_top_posts('er')
+            ui.timer(0.2, init_display, once=True)
     
     return top_posts_card
 

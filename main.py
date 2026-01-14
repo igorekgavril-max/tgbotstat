@@ -42,6 +42,101 @@ ui.add_head_html('''
             }
         }
     </style>
+    
+    <!-- Yandex.Metrika counter -->
+    <script type="text/javascript">
+        (function(m,e,t,r,i,k,a){
+            m[i]=m[i]||function(){(m[i].a=m[i].a||[]).push(arguments)};
+            m[i].l=1*new Date();
+            for (var j = 0; j < document.scripts.length; j++) {
+                if (document.scripts[j].src === r) { return; }
+            }
+            k=e.createElement(t),a=e.getElementsByTagName(t)[0],k.async=1,k.src=r,a.parentNode.insertBefore(k,a)
+        })(window, document,'script','https://mc.yandex.ru/metrika/tag.js?id=106259012', 'ym');
+
+        // Инициализация Метрики после загрузки скрипта
+        (function() {
+            function initMetrika() {
+                if (window.ym) {
+                    try {
+                        window.ym(106259012, 'init', {
+                            ssr: true,
+                            webvisor: true,
+                            clickmap: true,
+                            ecommerce: "dataLayer",
+                            accurateTrackBounce: true,
+                            trackLinks: true
+                        });
+                        console.log('Yandex Metrika initialized');
+                    } catch(e) {
+                        console.warn('Yandex Metrika init error:', e);
+                    }
+                }
+            }
+            
+            // Пытаемся инициализировать сразу, если ym уже доступен
+            if (window.ym && typeof window.ym === 'function') {
+                initMetrika();
+            } else {
+                // Ждем загрузки скрипта
+                var checkInterval = setInterval(function() {
+                    if (window.ym && typeof window.ym === 'function') {
+                        clearInterval(checkInterval);
+                        initMetrika();
+                    }
+                }, 50);
+                
+                // Таймаут на случай, если скрипт не загрузится
+                setTimeout(function() {
+                    clearInterval(checkInterval);
+                    if (!window.ym) {
+                        console.warn('Yandex Metrika: script failed to load');
+                    }
+                }, 5000);
+            }
+        })();
+        
+        // Глобальная функция для отправки событий (инициализируется сразу)
+        (function() {
+            window._ymTrack = function(eventName, params) {
+                if (window.ym && typeof window.ym === 'function') {
+                    try {
+                        if (params && Object.keys(params).length > 0) {
+                            window.ym(106259012, 'reachGoal', eventName, params);
+                        } else {
+                            window.ym(106259012, 'reachGoal', eventName);
+                        }
+                        console.log('Yandex Metrika: tracked event', eventName, params || '');
+                    } catch(e) {
+                        console.warn('Yandex Metrika error:', e);
+                    }
+                } else {
+                    console.warn('Yandex Metrika: window.ym not available');
+                }
+            };
+            
+            window._ymSetParams = function(params) {
+                if (window.ym && typeof window.ym === 'function') {
+                    try {
+                        window.ym(106259012, 'params', params);
+                        console.log('Yandex Metrika: set params', params);
+                    } catch(e) {
+                        console.warn('Yandex Metrika error:', e);
+                    }
+                } else {
+                    console.warn('Yandex Metrika: window.ym not available');
+                }
+            };
+        })();
+    </script>
+
+    <noscript>
+        <div>
+            <img src="https://mc.yandex.ru/watch/106259012"
+                 style="position:absolute; left:-9999px;" alt="" />
+        </div>
+    </noscript>
+    <!-- /Yandex.Metrika counter -->
 ''')
 
 # STATE импортирован из core.state

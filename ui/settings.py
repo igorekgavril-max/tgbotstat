@@ -7,6 +7,7 @@ from core.state import STATE
 from core.services import fetch_posts_async, extract_channel_username
 from core.analytics import calculate_previous_period, compare_periods, calculate_er
 from core.request_logger import log_statistics_request
+from core.yandex_metrika import track
 from ui.stats import stats_html
 from ui.top_posts import update_top_posts
 from ui.posting_insights import update_posting_insights
@@ -89,9 +90,23 @@ def render_settings(
             if insights_card:
                 insights_card.style('display: none;')
 
+        def on_date_change():
+            """Обработчик изменения дат - отслеживает событие change_period"""
+            d_from = date_from.value.strip()
+            d_to = date_to.value.strip()
+            
+            # Отслеживаем изменение периода только если даты валидны
+            if d_from and d_to and is_valid_date(d_from) and is_valid_date(d_to) and d_from <= d_to:
+                track('change_period', {
+                    'period_start': d_from,
+                    'period_end': d_to
+                })
+            
+            auto_reset_stats()
+
         channel_input.on('change', lambda _: auto_reset_stats())
-        date_from.on('change', lambda _: auto_reset_stats())
-        date_to.on('change', lambda _: auto_reset_stats())
+        date_from.on('change', lambda _: on_date_change())
+        date_to.on('change', lambda _: on_date_change())
         compare_switch.on('change', lambda _: auto_reset_stats())
     
         async def on_fetch():
@@ -112,6 +127,22 @@ def render_settings(
             if d_from > d_to:
                 progress_label.text = "⛔ Дата 'от' не должна быть позже даты 'до'"
                 return
+
+            # Проверяем, является ли это повторной загрузкой для того же периода
+            is_refresh = (
+                STATE.last_fetch_params and
+                STATE.last_fetch_params.get('start_date') == d_from and
+                STATE.last_fetch_params.get('end_date') == d_to and
+                STATE.last_channel == channel
+            )
+            
+            # Отслеживаем события Яндекс.Метрики
+            if is_refresh:
+                # Повторная загрузка для того же периода
+                track('refresh_statistics')
+            else:
+                # Первая загрузка или новый период
+                track('get_statistics')
 
             # Логируем запрос ДО начала загрузки данных
             # Это гарантирует, что запрос будет залогирован даже при ошибке загрузки
@@ -177,7 +208,9 @@ def render_settings(
                 update_posting_insights(insights_container)
                 # Обновляем топ-посты с метрикой по умолчанию (ER) после небольшой задержки
                 # чтобы гарантировать, что контейнер полностью инициализирован в DOM
-                ui.timer(0.1, lambda: update_top_posts('er'), once=True)
+                def update_top_posts_delayed():
+                    update_top_posts('er')
+                ui.timer(0.1, update_top_posts_delayed, once=True)
             except Exception as e:
                 STATE.reset()
                 progress_label.text = f"⛔ Ошибка: {str(e)}"
